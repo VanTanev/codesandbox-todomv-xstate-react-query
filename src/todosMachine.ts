@@ -29,8 +29,12 @@ type Event =
       completed: boolean;
     }
   | {
-      type: "SET_CONTEXT";
-      context: Partial<Context>;
+      type: "SET_TODOS";
+      todos: Todo[];
+    }
+  | {
+      type: "SET_FILTER";
+      filter: Filter;
     };
 
 export const todosMachine = createMachine<Context, Event>({
@@ -45,7 +49,7 @@ export const todosMachine = createMachine<Context, Event>({
         });
 
         return observer.subscribe(({ data: todos = [] }) => {
-          sendBack({ type: "SET_CONTEXT", context: { todos } });
+          sendBack({ type: "SET_TODOS", todos });
         });
       },
     },
@@ -55,7 +59,7 @@ export const todosMachine = createMachine<Context, Event>({
         function onHashChange() {
           const filter: Filter =
             window.location.hash.slice(2) || ("all" as any);
-          sendBack({ type: "SET_CONTEXT", context: { filter } });
+          sendBack({ type: "SET_FILTER", filter });
         }
 
         // get initial value
@@ -72,7 +76,8 @@ export const todosMachine = createMachine<Context, Event>({
     filter: "all",
   },
   on: {
-    SET_CONTEXT: { actions: assign((_, { context }) => context) },
+    SET_TODOS: { actions: assign((_, { todos }) => ({ todos })) },
+    SET_FILTER: { actions: assign((_, { filter }) => ({ filter })) },
     CREATE_TODO: {
       actions: (_, event) => {
         if (event.title) {
