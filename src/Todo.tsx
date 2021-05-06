@@ -1,41 +1,29 @@
 import React from "react";
 import { Todo as TTodo } from "./types";
 import cn from "classnames";
-import { useMutation } from "react-query";
-import { deleteMutation, updateMutation } from "./mutations";
+import { asEffect, useMachine } from "@xstate/react";
+import { todoMachine } from "./todoMachine";
 
 export function Todo({ todo }: { todo: TTodo }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const [state, send] = useMachine(todoMachine, {
+    id: `todo(${todo.title})`,
+    context: {
+      todo,
+    },
+    actions: {
+      focusInput: asEffect(() => {
+        inputRef.current?.select();
+      }),
+    },
+    devTools: true,
+  });
   const { id, title, completed } = todo;
-
-  const deleteRecord = useMutation(deleteMutation);
-  const update = useMutation(updateMutation);
-  const toggleComplete = (todo: TTodo) => {
-    update.mutate({ ...todo, completed: !todo.completed });
-  };
-
-  const [state, setState] = React.useState<"idle" | "editing">("idle");
-  const [editTitle, setEditTitle] = React.useState(title);
-
-  const executeEdit = () => {
-    update.mutate(
-      { ...todo, title: editTitle },
-      {
-        onSuccess: () => {
-          setState("idle");
-        },
-      }
-    );
-  };
-
-  React.useEffect(() => {
-    if (state === "editing") inputRef.current?.select();
-  }, [state]);
 
   return (
     <li
       className={cn({
-        editing: state === "editing",
+        editing: state.matches("editing"),
         completed,
       })}
       data-todo-state={completed ? "completed" : "active"}
@@ -46,13 +34,13 @@ export function Todo({ todo }: { todo: TTodo }) {
           className="toggle"
           type="checkbox"
           onChange={(_) => {
-            toggleComplete(todo);
+            send({ type: "TOGGLE_COMPLETE" });
           }}
           checked={completed}
         />
         <label
           onDoubleClick={() => {
-            setState("editing");
+            send({ type: "EDIT" });
           }}
         >
           {title}
@@ -60,28 +48,27 @@ export function Todo({ todo }: { todo: TTodo }) {
         <button
           className="destroy"
           onClick={() => {
-            deleteRecord.mutate(todo);
+            send({ type: "DELETE" });
           }}
         />
       </div>
       <input
         className="edit"
-        value={editTitle}
+        value={state.context.editTitle}
         onBlur={(_) => {
-          executeEdit();
+          send({ type: "COMMIT" });
         }}
         onChange={(e) => {
-          setEditTitle(e.target.value);
+          send({ type: "INPUT", value: e.target.value });
         }}
         onKeyPress={(e) => {
           if (e.key === "Enter") {
-            executeEdit();
+            send({ type: "COMMIT" });
           }
         }}
         onKeyDown={(e) => {
           if (e.key === "Escape") {
-            setEditTitle(title);
-            setState("idle");
+            send({ type: "CANCEL" });
           }
         }}
         ref={inputRef}

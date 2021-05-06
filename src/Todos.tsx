@@ -1,18 +1,10 @@
 import React from "react";
 import cn from "classnames";
 import { Todo } from "./Todo";
-import { useMutation, useQuery } from "react-query";
-import { fetchAll } from "./api/todos";
-import {
-  createMutation,
-  clearCompletedMutation,
-  markAllMutation,
-} from "./mutations";
 
 import { Todo as TTodo } from "./types";
-import { useHashChange } from "./useHashChange";
-
-type Filter = "active" | "completed" | "all";
+import { useMachine } from "@xstate/react";
+import { todosMachine, Filter } from "./todosMachine";
 
 function filterTodos(filter: Filter, todos: TTodo[]) {
   if (filter === "active") {
@@ -27,19 +19,8 @@ function filterTodos(filter: Filter, todos: TTodo[]) {
 }
 
 export function Todos() {
-  const { data: todos = [] } = useQuery({
-    queryKey: "todos",
-    queryFn: fetchAll,
-  });
-
-  const [filter, setFilter] = React.useState<Filter>("all");
-  useHashChange(() => {
-    setFilter(window.location.hash.slice(2) || ("all" as any));
-  });
-
-  const create = useMutation(createMutation);
-  const clearCompleted = useMutation(clearCompletedMutation);
-  const markAll = useMutation(markAllMutation);
+  const [state, send] = useMachine(todosMachine, { devTools: true });
+  const { todos, filter } = state.context;
 
   const numActiveTodos = todos.filter((todo) => !todo.completed).length;
   const allCompleted = todos.length > 0 && numActiveTodos === 0;
@@ -57,7 +38,7 @@ export function Todos() {
           onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === "Enter") {
               let input = e.target as HTMLInputElement;
-              create.mutate({ title: input.value });
+              send({ type: "CREATE_TODO", title: input.value });
               input.value = "";
             }
           }}
@@ -70,7 +51,7 @@ export function Todos() {
           type="checkbox"
           checked={allCompleted}
           onChange={() => {
-            markAll.mutate({ completed: mark === "completed" });
+            send({ type: "MARK_ALL", completed: mark === "completed" });
           }}
         />
         <label htmlFor="toggle-all" title={`Mark all as ${mark}`}>
@@ -123,7 +104,7 @@ export function Todos() {
           {numActiveTodos < todos.length && (
             <button
               onClick={(_) => {
-                clearCompleted.mutate();
+                send({ type: "CLEAR_COMPLETED" });
               }}
               className="clear-completed"
             >
