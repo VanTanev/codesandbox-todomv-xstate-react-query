@@ -68,10 +68,10 @@ export const deleteRecord = (todo: Todo): Promise<Todo> => {
     if (!deletedTodo) {
       throw new Error("404");
     }
+    todos = todos.filter((todo) => todo !== deletedTodo);
+    persist();
 
     setTimeout(() => {
-      todos = todos.filter((todo) => todo !== deletedTodo);
-      persist();
       resolve(deletedTodo!);
     }, DELAY);
   });
@@ -79,10 +79,10 @@ export const deleteRecord = (todo: Todo): Promise<Todo> => {
 
 export const clearCompleted = (): Promise<Todo[]> => {
   return new Promise((resolve) => {
+    reload();
+    todos = todos.filter((todo) => !todo.completed);
+    persist();
     setTimeout(() => {
-      reload();
-      todos = todos.filter((todo) => !todo.completed);
-      persist();
       resolve(todos);
     }, DELAY);
   });
@@ -94,10 +94,10 @@ export const markAll = ({
   completed: boolean;
 }): Promise<Todo[]> => {
   return new Promise((resolve) => {
+    reload();
+    todos = todos.map((todo) => ({ ...todo, completed }));
+    persist();
     setTimeout(() => {
-      reload();
-      todos = todos.map((todo) => ({ ...todo, completed }));
-      persist();
       resolve(todos);
     }, 100);
   });
@@ -110,11 +110,11 @@ export const update = (todo: Todo): Promise<Todo> => {
     if (!editedTodo) {
       throw new Error("404");
     }
+    editedTodo!.completed = todo.completed;
+    editedTodo!.title = todo.title;
+    persist();
 
     setTimeout(() => {
-      editedTodo!.completed = todo.completed;
-      editedTodo!.title = todo.title;
-      persist();
       resolve(editedTodo!);
     }, 100);
   });

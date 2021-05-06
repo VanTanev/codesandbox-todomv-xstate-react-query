@@ -115,7 +115,7 @@ export const deleteMutation: UseMutationOptions<
     await queryClient.cancelQueries("todos");
     const previousTodos = queryClient.getQueryData<Todo[]>("todos");
     queryClient.setQueryData<Todo[]>("todos", (todos = []) =>
-      todos.map((t) => (t.id === todo.id ? { ...t, ...todo } : t))
+      todos.filter((t) => t.id !== todo.id)
     );
     return { previousTodos };
   },
