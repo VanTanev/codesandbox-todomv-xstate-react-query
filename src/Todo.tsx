@@ -2,82 +2,28 @@ import React from "react";
 import { Todo as TTodo } from "./types";
 import cn from "classnames";
 import { useMutation } from "react-query";
-import { update, deleteRecord } from "./api/todos";
-import queryClient from "./queryClient";
-
-const useDeleteMutation = () => {
-  return useMutation<
-    TTodo,
-    unknown,
-    TTodo,
-    { previousTodos: TTodo[] | undefined }
-  >(deleteRecord, {
-    onMutate: async (todo) => {
-      await queryClient.cancelQueries("todos");
-      const previousTodos = queryClient.getQueryData<TTodo[]>("todos");
-      queryClient.setQueryData<TTodo[]>("todos", (todos = []) =>
-        todos.map((t) => (t.id === todo.id ? { ...t, ...todo } : t))
-      );
-      return { previousTodos };
-    },
-    onError: (error, variables, context) => {
-      if (context) {
-        queryClient.setQueryData("todos", context.previousTodos);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries("todos");
-    }
-  });
-};
-
-const useUpdateMutation = () => {
-  return useMutation<
-    TTodo,
-    unknown,
-    TTodo,
-    { previousTodos: TTodo[] | undefined }
-  >({
-    mutationFn: update,
-    onMutate: async (todo) => {
-      await queryClient.cancelQueries("todos");
-      const previousTodos = queryClient.getQueryData<TTodo[]>("todos");
-      queryClient.setQueryData<TTodo[]>("todos", (todos = []) =>
-        todos.map((t) => (t.id === todo.id ? { ...t, ...todo } : t))
-      );
-      return { previousTodos };
-    },
-    onError: (error, variables, context) => {
-      if (context) {
-        queryClient.setQueryData("todos", context.previousTodos);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries("todos");
-    }
-  });
-};
+import { deleteMutation, updateMutation } from "./mutations";
 
 export function Todo({ todo }: { todo: TTodo }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const { id, title, completed } = todo;
 
-  const deleteMutation = useDeleteMutation();
-  const updateMutation = useUpdateMutation();
+  const deleteRecord = useMutation(deleteMutation);
+  const update = useMutation(updateMutation);
   const toggleComplete = (todo: TTodo) => {
-    updateMutation.mutate({ ...todo, completed: !todo.completed });
+    update.mutate({ ...todo, completed: !todo.completed });
   };
 
   const [state, setState] = React.useState<"idle" | "editing">("idle");
   const [editTitle, setEditTitle] = React.useState(title);
 
   const executeEdit = () => {
-    updateMutation.mutate(
+    update.mutate(
       { ...todo, title: editTitle },
       {
         onSuccess: () => {
           setState("idle");
-        }
+        },
       }
     );
   };
@@ -90,7 +36,7 @@ export function Todo({ todo }: { todo: TTodo }) {
     <li
       className={cn({
         editing: state === "editing",
-        completed
+        completed,
       })}
       data-todo-state={completed ? "completed" : "active"}
       key={id}
@@ -105,7 +51,7 @@ export function Todo({ todo }: { todo: TTodo }) {
           checked={completed}
         />
         <label
-          onDoubleClick={(e) => {
+          onDoubleClick={() => {
             setState("editing");
           }}
         >
@@ -114,7 +60,7 @@ export function Todo({ todo }: { todo: TTodo }) {
         <button
           className="destroy"
           onClick={() => {
-            deleteMutation.mutate(todo);
+            deleteRecord.mutate(todo);
           }}
         />
       </div>

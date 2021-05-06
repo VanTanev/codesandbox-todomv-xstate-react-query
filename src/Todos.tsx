@@ -1,120 +1,50 @@
 import React from "react";
+import cn from "classnames"
 import { Todo } from "./Todo";
 import { useMutation, useQuery } from "react-query";
-import { clearCompleted, create, fetchAll, markAll } from "./api/todos";
-import queryClient from "./queryClient";
-import {v4 as uuid} from "uuid";
+import { fetchAll } from "./api/todos";
+import {
+  createMutation,
+  clearCompletedMutation,
+  markAllMutation,
+} from "./mutations";
+
 import { Todo as TTodo } from "./types";
+import { useHashChange } from "./useHashChange";
 
-const useMarkAllMutation = () => {
-  return useMutation<
-    TTodo[],
-    unknown,
-    { completed: boolean },
-    { previousTodos: TTodo[] | undefined }
-  >({
-    mutationFn: markAll,
-    onMutate: async ({ completed }) => {
-      await queryClient.cancelQueries("todos");
-      const previousTodos = queryClient.getQueryData<TTodo[]>("todos");
-      queryClient.setQueryData<TTodo[]>("todos", (todos = []) =>
-        todos.map((todo) => ({ ...todo, completed }))
-      );
-      return { previousTodos };
-    },
-    onError: (error, variables, context) => {
-      if (context) {
-        queryClient.setQueryData("todos", context.previousTodos);
-      }
-    },
-    onSuccess: (todos) => {
-      queryClient.setQueryData("todos", todos);
-    }
-  });
-};
-const useCreateMutation = () => {
-  return useMutation<
-    TTodo,
-    unknown,
-    { title: string; completed?: boolean },
-    { optimisticTodo: TTodo }
-  >(create, {
-    onMutate: async (todo) => {
-      await queryClient.cancelQueries("todos");
-      const optimisticTodo: TTodo = {
-        id: uuid(),
-        title: todo.title,
-        completed: todo.completed ?? false
-      };
-      queryClient.setQueryData<TTodo[]>("todos", (todos = []) => [
-        ...todos,
-        optimisticTodo
-      ]);
-      console.log("onMutate", {
-        todos: queryClient.getQueryData("todos")
-      });
-      return { optimisticTodo };
-    },
-    onSuccess: (newTodo, _, ctx) => {
-      queryClient.setQueryData<TTodo[]>("todos", (todos = []) => {
-        console.log("success", {
-          newTodo,
-          todos: queryClient.getQueryData("todos")
-        });
+type Filter = "active" | "completed" | "all";
 
-        return todos.map((todo) =>
-          todo.id === ctx?.optimisticTodo.id ? newTodo : todo
-        );
-      });
-    },
-    onError: (error, _, context) => {
-      console.log("error", { error, context });
-      queryClient.setQueryData<TTodo[]>("todos", (todos = []) =>
-        todos.filter((todo) => todo.id !== context?.optimisticTodo?.id)
-      );
-    }
-  });
-};
+function filterTodos(filter: Filter, todos: TTodo[]) {
+  if (filter === "active") {
+    return todos.filter((todo) => !todo.completed);
+  }
 
-const useClearCompletedMutation = () => {
-  return useMutation<
-    TTodo[],
-    unknown,
-    void,
-    { previousTodos: TTodo[] | undefined }
-  >(clearCompleted, {
-    onMutate: async () => {
-      await queryClient.cancelQueries("todos");
-      const previousTodos = queryClient.getQueryData<TTodo[]>("todos");
-      queryClient.setQueryData<TTodo[]>("todos", (todos = []) =>
-        todos.filter((todo) => !todo.completed)
-      );
-      return { previousTodos };
-    },
-    onError: (error, variables, context) => {
-      if (context) {
-        queryClient.setQueryData("todos", context.previousTodos);
-      }
-    },
-    onSuccess: (todos) => {
-      queryClient.setQueryData("todos", todos);
-    }
-  });
-};
+  if (filter === "completed") {
+    return todos.filter((todo) => todo.completed);
+  }
+
+  return todos;
+}
 
 export function Todos() {
   const { data: todos = [] } = useQuery({
     queryKey: "todos",
-    queryFn: fetchAll
+    queryFn: fetchAll,
   });
 
-  const createMutation = useCreateMutation();
-  const clearCompletedMutation = useClearCompletedMutation();
-  const markAllMutation = useMarkAllMutation();
+  const [filter, setFilter] = React.useState<Filter>("all");
+  useHashChange(() => {
+    setFilter(window.location.hash.slice(2) || "all" as any);
+  });
+
+  const create = useMutation(createMutation);
+  const clearCompleted = useMutation(clearCompletedMutation);
+  const markAll = useMutation(markAllMutation);
 
   const numActiveTodos = todos.filter((todo) => !todo.completed).length;
   const allCompleted = todos.length > 0 && numActiveTodos === 0;
   const mark = !allCompleted ? "completed" : "active";
+  const filteredTodos = filterTodos(filter, todos);
 
   return (
     <section className="todoapp">
@@ -127,7 +57,7 @@ export function Todos() {
           onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === "Enter") {
               let input = e.target as HTMLInputElement;
-              createMutation.mutate({ title: input.value });
+              create.mutate({ title: input.value });
               input.value = "";
             }
           }}
@@ -140,14 +70,14 @@ export function Todos() {
           type="checkbox"
           checked={allCompleted}
           onChange={() => {
-            markAllMutation.mutate({ completed: mark === "completed" });
+            markAll.mutate({ completed: mark === "completed" });
           }}
         />
         <label htmlFor="toggle-all" title={`Mark all as ${mark}`}>
           Mark all as {mark}
         </label>
         <ul className="todo-list">
-          {todos.map((todo) => (
+          {filteredTodos.map((todo) => (
             <Todo key={todo.id} todo={todo} />
           ))}
         </ul>
@@ -158,10 +88,42 @@ export function Todos() {
             <strong>{numActiveTodos}</strong> item
             {numActiveTodos === 1 ? "" : "s"} left
           </span>
+          <ul className="filters">
+            <li>
+              <a
+                className={cn({
+                  selected: filter === "all"
+                })}
+                href="#/"
+              >
+                All
+              </a>
+            </li>
+            <li>
+              <a
+                className={cn({
+                  selected: filter === "active"
+                })}
+                href="#/active"
+              >
+                Active
+              </a>
+            </li>
+            <li>
+              <a
+                className={cn({
+                  selected: filter === "completed"
+                })}
+                href="#/completed"
+              >
+                Completed
+              </a>
+            </li>
+          </ul>
           {numActiveTodos < todos.length && (
             <button
               onClick={(_) => {
-                clearCompletedMutation.mutate();
+                clearCompleted.mutate();
               }}
               className="clear-completed"
             >
