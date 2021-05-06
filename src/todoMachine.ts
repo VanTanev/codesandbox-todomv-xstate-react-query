@@ -92,7 +92,7 @@ export const todoMachine = createMachine<Context, Event>(
       },
       saving: {
         invoke: {
-            id: 'update-mutation',
+          id: "update-mutation",
           src: (ctx) =>
             new MutationObserver(queryClient, updateMutation).mutate({
               ...ctx.todo,
