@@ -18,14 +18,18 @@ export function Todo({ todo }: { todo: TTodo }) {
   const [editTitle, setEditTitle] = React.useState(title);
 
   const executeEdit = () => {
-    update.mutate(
-      { ...todo, title: editTitle },
-      {
-        onSuccess: () => {
-          setState("idle");
-        },
-      }
-    );
+    if (editTitle === "") {
+      deleteRecord.mutate(todo);
+    } else {
+      update.mutate(
+        { ...todo, title: editTitle },
+        {
+          onSuccess: () => {
+            setState("idle");
+          },
+        }
+      );
+    }
   };
 
   React.useEffect(() => {
