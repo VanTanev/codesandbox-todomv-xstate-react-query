@@ -42,6 +42,8 @@ export const todoMachine = createMachine<Context, Event>(
         const observer = new QueryObserver(queryClient, {
           queryKey: "todos",
           queryFn: fetchAll,
+          // IMPORTANT - we only want to listen for changes, but not trigger a refetch
+          refetchOnMount: false,
         });
 
         return observer.subscribe(({ data: todos = [] }) => {
