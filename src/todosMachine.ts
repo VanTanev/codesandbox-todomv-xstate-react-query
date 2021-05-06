@@ -57,8 +57,7 @@ export const todosMachine = createMachine<Context, Event>({
       id: "hashchange",
       src: () => (sendBack) => {
         function onHashChange() {
-          const filter: Filter =
-            window.location.hash.slice(2) || ("all" as any);
+          const filter = (window.location.hash.slice(2) || "all") as Filter;
           sendBack({ type: "SET_FILTER", filter });
         }
 
@@ -96,6 +95,7 @@ export const todosMachine = createMachine<Context, Event>({
       },
     },
   },
+  // Workaround for https://github.com/davidkpiano/xstate/issues/2176
   initial: "idle",
   states: {
     idle: {},
