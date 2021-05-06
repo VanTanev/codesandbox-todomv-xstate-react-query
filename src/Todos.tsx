@@ -1,5 +1,5 @@
 import React from "react";
-import cn from "classnames"
+import cn from "classnames";
 import { Todo } from "./Todo";
 import { useMutation, useQuery } from "react-query";
 import { fetchAll } from "./api/todos";
@@ -34,7 +34,7 @@ export function Todos() {
 
   const [filter, setFilter] = React.useState<Filter>("all");
   useHashChange(() => {
-    setFilter(window.location.hash.slice(2) || "all" as any);
+    setFilter(window.location.hash.slice(2) || ("all" as any));
   });
 
   const create = useMutation(createMutation);
@@ -92,7 +92,7 @@ export function Todos() {
             <li>
               <a
                 className={cn({
-                  selected: filter === "all"
+                  selected: filter === "all",
                 })}
                 href="#/"
               >
@@ -102,7 +102,7 @@ export function Todos() {
             <li>
               <a
                 className={cn({
-                  selected: filter === "active"
+                  selected: filter === "active",
                 })}
                 href="#/active"
               >
@@ -112,7 +112,7 @@ export function Todos() {
             <li>
               <a
                 className={cn({
-                  selected: filter === "completed"
+                  selected: filter === "completed",
                 })}
                 href="#/completed"
               >
