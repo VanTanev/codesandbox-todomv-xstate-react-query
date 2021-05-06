@@ -77,6 +77,9 @@ export const createMutation: UseMutationOptions<
       todos.filter((todo) => todo.id !== context?.optimisticTodo?.id)
     );
   },
+  onSettled: () => {
+    queryClient.invalidateQueries("todos");
+  },
 };
 
 export const clearCompletedMutation: UseMutationOptions<
