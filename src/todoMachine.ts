@@ -1,5 +1,5 @@
 import { Todo } from "./types";
-import { MutationObserver }  from "react-query";
+import { MutationObserver } from "react-query";
 import { deleteMutation, updateMutation } from "./mutations";
 import { createMachine, assign } from "xstate";
 import queryClient from "./queryClient";
@@ -58,20 +58,27 @@ export const todoMachine = createMachine<Context, Event>(
             target: "editing",
             actions: "focusInput",
           },
-          DELETE: {
-            actions: (ctx) =>
-              new MutationObserver(queryClient, deleteMutation).mutate(
-                ctx.todo
-              ),
-          },
+          DELETE: { target: "deleting" },
         },
       },
       editing: {
         on: {
           INPUT: { actions: assign((_, { value }) => ({ editTitle: value })) },
           CANCEL: { target: "reading" },
-          COMMIT: { target: "saving" },
+          COMMIT: [
+            { cond: "emptyEditTitle", target: "deleting" },
+            { target: "saving" },
+          ],
         },
+      },
+      deleting: {
+        invoke: {
+          id: "delete",
+
+          src: (ctx) =>
+            new MutationObserver(queryClient, deleteMutation).mutate(ctx.todo),
+        },
+        type: "final",
       },
       saving: {
         invoke: {
@@ -87,5 +94,8 @@ export const todoMachine = createMachine<Context, Event>(
       },
     },
   },
-  { actions: { focusInput: () => {} } }
+  {
+    guards: { emptyEditTitle: (ctx) => ctx.editTitle === "" },
+    actions: { focusInput: () => {} },
+  }
 );
