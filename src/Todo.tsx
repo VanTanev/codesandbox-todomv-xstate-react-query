@@ -18,6 +18,11 @@ export function Todo({ todo }: { todo: TTodo }) {
     },
     devTools: true,
   });
+
+  React.useEffect(() => {
+    send({ type: "SET_TODO", todo });
+  }, [todo, send]);
+
   const { id, title, completed } = todo;
 
   return (

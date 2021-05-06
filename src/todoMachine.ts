@@ -1,9 +1,8 @@
 import { Todo } from "./types";
-import { MutationObserver, QueryObserver } from "react-query";
+import { MutationObserver }  from "react-query";
 import { deleteMutation, updateMutation } from "./mutations";
 import { createMachine, assign } from "xstate";
 import queryClient from "./queryClient";
-import { fetchAll } from "./api/todos";
 
 type Context = {
   readonly todo: Todo;
@@ -36,24 +35,6 @@ type Event =
 
 export const todoMachine = createMachine<Context, Event>(
   {
-    invoke: {
-      id: "query-observer-todos",
-      src: (ctx) => (sendBack) => {
-        const observer = new QueryObserver(queryClient, {
-          queryKey: "todos",
-          queryFn: fetchAll,
-          // IMPORTANT - we only want to listen for changes, but not trigger a refetch
-          refetchOnMount: false,
-        });
-
-        return observer.subscribe(({ data: todos = [] }) => {
-          const todo = todos.find((todo) => todo.id === ctx.todo.id);
-          if (todo) {
-            sendBack({ type: "SET_TODO", todo });
-          }
-        });
-      },
-    },
     context: {
       todo: null!,
       editTitle: "",
